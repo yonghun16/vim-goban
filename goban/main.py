@@ -1,12 +1,8 @@
+import curses
 import json
 import os
-import time
-import curses
-
-from .board import Board
-from .engine import GnuGo
-from .input import move
-from .renderer import render
+from goban.board import Board
+from goban.engine import GnuGo
 
 SAVE_FILE = "savegame.json"
 
@@ -36,7 +32,7 @@ def prompt_save(
     stdscr, board, moves, turn, game_over, consecutive_passes, cursor, history
 ):
     # Give the terminal state a tiny moment to settle and flush any interrupted inputs
-    time.sleep(0.1)
+    curses.napms(100)
     try:
         curses.flushinp()
     except curses.error:
