@@ -1,11 +1,23 @@
 import curses
 import json
 import os
+import platformdirs
 from goban.board import Board
 from goban.engine import GnuGo
 from goban.input import move  # Import the move function
 
-SAVE_FILE = "savegame.json"
+USER_DATA_DIR = platformdirs.user_data_dir("vim-goban")
+SAVE_FILE = os.path.join(USER_DATA_DIR, "savegame.json")
+LEGACY_SAVE_FILE = "savegame.json"
+
+# Migrate legacy save file if it exists and new one does not
+if not os.path.exists(SAVE_FILE) and os.path.exists(LEGACY_SAVE_FILE):
+    try:
+        os.makedirs(USER_DATA_DIR, exist_ok=True)
+        import shutil
+        shutil.move(LEGACY_SAVE_FILE, SAVE_FILE)
+    except Exception:
+        pass
 
 
 def save_game(board, moves, turn, game_over, consecutive_passes, cursor, history):
@@ -18,6 +30,7 @@ def save_game(board, moves, turn, game_over, consecutive_passes, cursor, history
         "cursor": list(cursor),
         "history": history,
     }
+    os.makedirs(os.path.dirname(SAVE_FILE), exist_ok=True)
     with open(SAVE_FILE, "w") as f:
         json.dump(data, f, indent=4)
 

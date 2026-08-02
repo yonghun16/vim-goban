@@ -1,13 +1,20 @@
 [project]
 name = "vim-goban"
-version = "0.3.0"
+version = "0.3.1"
 requires-python = ">=3.10"
 description = "A Vim-motion powered terminal Go board"
 authors = [
     {name = "yonghun16"}
 ]
 readme = "README.md"
+dependencies = [
+    "platformdirs",
+]
 
 
 [project.scripts]
 goban = "goban.main:main"
+
+[tool.setuptools.packages.find]
+include = ["goban*"]
+exclude = ["previews*"]
