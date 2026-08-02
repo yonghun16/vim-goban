@@ -56,32 +56,6 @@ gnugo --version
 
 ## Install vim-goban
 
-Clone the repository:
-
-```bash
-git clone https://github.com/yourname/vim-goban.git
-
-cd vim-goban
-```
-
-Install dependencies:
-
-```bash
-pip install -e .
-```
-
-
-Run:
-
-```bash
-goban
-```
-
-or:
-
-```bash
-python -m goban.main
-```
 
 
 
