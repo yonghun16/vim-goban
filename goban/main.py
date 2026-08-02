@@ -3,6 +3,7 @@ import json
 import os
 from goban.board import Board
 from goban.engine import GnuGo
+from goban.input import move  # Import the move function
 
 SAVE_FILE = "savegame.json"
 
@@ -143,6 +144,8 @@ def safe_render_and_draw(
             pass
         stdscr.refresh()
         return
+
+    from goban.renderer import render  # Import render function here to avoid circular import
 
     lines = render(
         board,
