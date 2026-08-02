@@ -21,6 +21,9 @@ def render(
     turn=None,
     message="",
     show_help=False,
+    recent_black=None,
+    recent_white=None,
+    show_recent=False,
 ):
     lines = []
 
@@ -67,19 +70,29 @@ def render(
                     cell = "⊙"
 
                 elif stone == board.BLACK:
-                    cell = "◉"
+                    if show_recent and recent_black == (x, y):
+                        cell = "★"
+                    else:
+                        cell = "◉"
 
                 elif stone == board.WHITE:
-                    cell = "◎"
+                    if show_recent and recent_white == (x, y):
+                        cell = "☆"
+                    else:
+                        cell = "◎"
 
             # Stone
             elif stone == board.BLACK:
-
-                cell = "●"
+                if show_recent and recent_black == (x, y):
+                    cell = "★"
+                else:
+                    cell = "●"
 
             elif stone == board.WHITE:
-
-                cell = "○"
+                if show_recent and recent_white == (x, y):
+                    cell = "☆"
+                else:
+                    cell = "○"
 
             # Star point
             elif (x, y) in STARS:
@@ -109,7 +122,8 @@ def render(
         lines.append(" Shift+M       : Move to Middle of the column")
         lines.append(" Enter (Return): Place stone")
         lines.append(" p             : Pass turn")
-        lines.append(" r             : Resign game")
+        lines.append(" r             : Show recent move positions (★/☆)")
+        lines.append(" n             : Start a new game")
         lines.append(" u             : Undo last move")
         lines.append(" ?             : Toggle Help Guide")
         lines.append(" q             : Quit game")

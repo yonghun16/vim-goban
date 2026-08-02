@@ -88,6 +88,27 @@ def prompt_load(stdscr):
             return None
 
 
+def prompt_new_game(stdscr):
+    stdscr.erase()
+    max_y, max_x = stdscr.getmaxyx()
+    msg = "Start a new game? [y/n]: "
+    try:
+        stdscr.addstr(0, 0, msg[: max_x - 1])
+    except curses.error:
+        pass
+    stdscr.refresh()
+    while True:
+        try:
+            key = stdscr.getkey()
+            if key in ("y", "Y"):
+                return True
+            elif key in ("n", "N"):
+                return False
+        except (curses.error, KeyboardInterrupt):
+            # If Ctrl+C is pressed or any error occurs, do not start a new game by default
+            return False
+
+
 def safe_render_and_draw(
     stdscr,
     board,
@@ -97,6 +118,9 @@ def safe_render_and_draw(
     turn,
     message,
     show_help,
+    recent_black=None,
+    recent_white=None,
+    show_recent=False,
 ):
     stdscr.erase()
     max_y, max_x = stdscr.getmaxyx()
@@ -132,6 +156,9 @@ def safe_render_and_draw(
         turn=turn,
         message=message,
         show_help=show_help,
+        recent_black=recent_black,
+        recent_white=recent_white,
+        show_recent=show_recent,
     )
 
     for i, line in enumerate(lines):
@@ -177,10 +204,13 @@ def run(stdscr):
     turn = Board.BLACK
     game_over = False
     consecutive_passes = 0
-    message = "Place stone [Enter], Pass [p], Resign [r], Quit [q]"
+    message = "Place stone [Enter], Pass [p], Recent [r], Quit [q]"
     show_help = False
     history = []
     moves = []
+    recent_black = None
+    recent_white = None
+    show_recent = False
 
     # Prompt to load saved game
     saved_data = prompt_load(stdscr)
@@ -193,12 +223,22 @@ def run(stdscr):
         cursor = tuple(saved_data["cursor"])
         history = saved_data["history"]
 
+        # Parse recent positions from loaded moves
+        for color, coord in moves:
+            if "PASS" not in coord:
+                pos = engine.parse_coordinate(coord)
+                if pos:
+                    if color == "black":
+                        recent_black = pos
+                    else:
+                        recent_white = pos
+
         # Replay moves to GnuGo
         engine.send("clear_board")
         for color, coord in moves:
             engine.send(f"play {color} {coord}")
 
-        message = "Game loaded successfully! Place stone [Enter], Pass [p], Resign [r], Quit [q]"
+        message = "Game loaded successfully! Place stone [Enter], Pass [p], Recent [r], Quit [q]"
 
     try:
         while True:
@@ -212,6 +252,9 @@ def run(stdscr):
                 turn,
                 message,
                 show_help,
+                recent_black=recent_black,
+                recent_white=recent_white,
+                show_recent=show_recent,
             )
 
             key = stdscr.getkey()
@@ -229,8 +272,8 @@ def run(stdscr):
                 )
                 break
 
-            if game_over and key not in ("q", "u", "?"):
-                # When the game is over, only 'q', 'u', and '?' are allowed
+            if game_over and key not in ("q", "u", "?", "r", "n"):
+                # When the game is over, only 'q', 'u', '?', 'r', and 'n' are allowed
                 continue
 
             elif key in (
@@ -254,6 +297,7 @@ def run(stdscr):
             ):
 
                 cursor = move(key, cursor)
+                show_recent = False
 
             elif key == "u":
                 if history:
@@ -269,6 +313,20 @@ def run(stdscr):
                     if len(moves) >= 2:
                         moves.pop()
                         moves.pop()
+
+                    # Recompute recent positions
+                    recent_black = None
+                    recent_white = None
+                    for color, coord in moves:
+                        if "PASS" not in coord:
+                            pos = engine.parse_coordinate(coord)
+                            if pos:
+                                if color == "black":
+                                    recent_black = pos
+                                else:
+                                    recent_white = pos
+
+                    show_recent = False
 
                     # Reset game status
                     consecutive_passes = 0
@@ -306,6 +364,9 @@ def run(stdscr):
                         turn,
                         "Black passed! AI is thinking...",
                         show_help,
+                        recent_black=recent_black,
+                        recent_white=recent_white,
+                        show_recent=show_recent,
                     )
 
                     # AI's turn
@@ -332,13 +393,33 @@ def run(stdscr):
                                 board.place(ax, ay, Board.WHITE)
                                 consecutive_passes = 0
                                 moves.append((ai_color, ai_move_upper))
+                                recent_white = (ax, ay)
                                 message = f"AI played {ai_move}"
                     turn = Board.BLACK
 
             elif key == "r":
-                # Player resigns
-                game_over = True
-                message = "Black resigned. White wins! (Press 'q' to quit)"
+                # Toggle recent move highlights
+                show_recent = not show_recent
+                if show_recent:
+                    message = "Showing recent moves (★: Black, ☆: White)"
+                else:
+                    message = "Hidden recent moves."
+
+            elif key == "n":
+                if prompt_new_game(stdscr):
+                    board = Board()
+                    engine.send("clear_board")
+                    cursor = (9, 9)
+                    turn = Board.BLACK
+                    game_over = False
+                    consecutive_passes = 0
+                    message = "Started a new game. Place stone [Enter], Pass [p], Recent [r], Quit [q]"
+                    show_help = False
+                    history = []
+                    moves = []
+                    recent_black = None
+                    recent_white = None
+                    show_recent = False
 
             elif key == "\r":
 
