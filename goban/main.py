@@ -121,6 +121,7 @@ def safe_render_and_draw(
     game_over=False,
     black_territory=None,
     white_territory=None,
+    color_mode=False,
 ):
     stdscr.erase()
     max_y, max_x = stdscr.getmaxyx()
@@ -166,6 +167,8 @@ def safe_render_and_draw(
         white_territory=white_territory,
     )
 
+    has_colors = curses.has_colors()
+
     for i, line in enumerate(lines):
         if i >= max_y:
             break
@@ -175,7 +178,39 @@ def safe_render_and_draw(
             safe_len = max_x - 2
         safe_line = line[:safe_len]
         try:
-            stdscr.addstr(i, 0, safe_line)
+            if color_mode and has_colors and line.startswith(("┌", "│", "└")):
+                # Draw character by character with board colors
+                for col_idx, char in enumerate(safe_line):
+                    # Determine color pair based on original character
+                    if char in ("┌", "┐", "└", "┘", "─", "│"):
+                        attr = curses.color_pair(10)
+                    elif char in ("+", "·"):
+                        attr = curses.color_pair(11)
+                    elif char in ("●", "◍", "•"):
+                        attr = curses.color_pair(12)
+                    elif char in ("○", "◌", "◦"):
+                        attr = curses.color_pair(13)
+                    elif char in ("⊙", "◉", "◎", "★", "☆"):
+                        attr = curses.color_pair(14) | curses.A_BOLD
+                    else:
+                        attr = curses.color_pair(10)
+
+                    # Map hollow white stone characters to filled counterparts for rendering
+                    if char == "○":
+                        char = "●"
+                    elif char == "◌":
+                        char = "◍"
+                    elif char == "◎":
+                        char = "◉"
+                    elif char == "☆":
+                        char = "★"
+                    
+                    try:
+                        stdscr.addch(i, col_idx, char, attr)
+                    except curses.error:
+                        pass
+            else:
+                stdscr.addstr(i, 0, safe_line)
         except curses.error:
             pass
 
@@ -196,6 +231,21 @@ def run(stdscr):
     curses.curs_set(0)
 
     curses.use_default_colors()
+
+    if curses.has_colors():
+        curses.start_color()
+        if curses.COLORS >= 256:
+            curses.init_pair(10, 235, 222)  # Board grid lines
+            curses.init_pair(11, 94, 222)   # Star points
+            curses.init_pair(12, 0, 222)    # Black stones
+            curses.init_pair(13, 15, 222)   # White stones
+            curses.init_pair(14, 196, 222)  # Cursors / highlights
+        else:
+            curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+            curses.init_pair(11, curses.COLOR_RED, curses.COLOR_YELLOW)
+            curses.init_pair(12, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+            curses.init_pair(13, curses.COLOR_WHITE, curses.COLOR_YELLOW)
+            curses.init_pair(14, curses.COLOR_RED, curses.COLOR_YELLOW)
 
     curses.nonl()  # Disable translation of carriage return to newline to distinguish Enter from Ctrl-J
 
@@ -218,6 +268,7 @@ def run(stdscr):
     show_recent = False
     black_territory = None
     white_territory = None
+    color_mode = False
 
     # Prompt to load saved game
     saved_data = prompt_load(stdscr)
@@ -269,6 +320,7 @@ def run(stdscr):
                 game_over=game_over,
                 black_territory=black_territory,
                 white_territory=white_territory,
+                color_mode=color_mode,
             )
 
             if show_recent:
@@ -295,8 +347,8 @@ def run(stdscr):
                 )
                 break
 
-            if game_over and key not in ("q", "u", "?", "r", "n"):
-                # When the game is over, only 'q', 'u', '?', 'r', and 'n' are allowed
+            if game_over and key not in ("q", "u", "?", "r", "n", "c"):
+                # When the game is over, only 'q', 'u', '?', 'r', 'n', and 'c' are allowed
                 continue
 
             elif key in (
@@ -394,6 +446,7 @@ def run(stdscr):
                         recent_black=recent_black,
                         recent_white=recent_white,
                         show_recent=show_recent,
+                        color_mode=color_mode,
                     )
 
                     # AI's turn
@@ -431,6 +484,13 @@ def run(stdscr):
                     message = "Showing recent moves (●★/○☆: Recent, ◍/◌: Existing)"
                 else:
                     message = "Hidden recent moves."
+
+            elif key == "c":
+                color_mode = not color_mode
+                if color_mode:
+                    message = "Color theme enabled. Press 'c' to disable."
+                else:
+                    message = "Color theme disabled."
 
             elif key == "n":
                 if prompt_new_game(stdscr):
@@ -484,6 +544,7 @@ def run(stdscr):
                         recent_black=recent_black,
                         recent_white=recent_white,
                         show_recent=show_recent,
+                        color_mode=color_mode,
                     )
 
                     # AI 차례

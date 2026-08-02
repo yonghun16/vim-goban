@@ -14,12 +14,14 @@ Built with Python and powered by GNU Go AI.
 ## Features
 
 - 🏁 Terminal UI based Go board
-- 🎮 Vim motion controls
-- 🤖 GNU Go AI integration
-- ⚫⚪ Stone capture system
-- 🔄 Undo support
-- ⏩ Pass / Resign support
-- 🌱 Lightweight and keyboard focused
+- 🎮 Vim-style keyboard navigation (`h`, `j`, `k`, `l`)
+- ⏩ Jump and position movement inspired by Vim motions
+- 🤖 GNU Go AI integration for opponent gameplay
+- ⚫⚪ Go rule based stone placement and capture system
+- 🔄 Undo and recent move tracking support
+- ⏸️ Pass system with automatic scoring after consecutive passes
+- 🎨 Terminal color board rendering
+- ⌨️ Keyboard-focused lightweight gameplay experience
 
 
 ## Screenshot
@@ -138,6 +140,7 @@ goban
 | `p` | Pass |
 |     | Two consecutive passes end the game (Score) |
 | `r` | Show recent move positions |
+| `c` | Toggle Color Theme |
 | `n` | Start a new game |
 | `u` | Undo last move |
 | `?` | Toggle help |

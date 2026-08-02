@@ -164,6 +164,7 @@ def render(
         lines.append(" p             : Pass turn")
         lines.append("               : Two consecutive passes end the game (Score)")
         lines.append(" r             : Show recent move positions (●/○ vs ◍/◌)")
+        lines.append(" c             : Toggle Color Theme")
         lines.append(" n             : Start a new game")
         lines.append(" u             : Undo last move")
         lines.append("")
