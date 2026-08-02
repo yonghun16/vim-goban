@@ -2,3 +2,6 @@ __pycache__/
 .aider*
 dist/
 build/
+.DS_Store
+savegame.json
+vim_goban.egg-info

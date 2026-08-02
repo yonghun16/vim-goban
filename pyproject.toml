@@ -1,0 +1,13 @@
+[project]
+name = "vim-goban"
+version = "0.1.0"
+description = "A Vim-motion powered terminal Go board"
+authors = [
+    {name = "YOUR_NAME"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+
+[project.scripts]
+goban = "goban.main:main"
