@@ -26,7 +26,7 @@ Built with Python and powered by GNU Go AI.
 
 ## Screenshot
 
-![vim-goban](https://raw.githubusercontent.com/yonghun16/vim-goban/refs/heads/main/preview.gif)
+![vim-goban](https://raw.githubusercontent.com/yonghun16/vim-goban/refs/heads/main/previews/preview_gif.gif)
 
 
 # Installation
@@ -229,19 +229,6 @@ Run:
 ```bash
 goban
 ```
-
-
-# Roadmap
-
-- [x] Terminal Go board
-- [x] Vim motion controls
-- [x] GNU Go AI integration
-- [x] Stone capture rules
-- [x] Undo support
-- [ ] Ko rule
-- [ ] SGF export/import
-- [ ] Game replay
-- [ ] Neovim plugin integration
 
 
 # License
