@@ -317,6 +317,8 @@ def run(stdscr):
                 "\x0c",
                 "\x7f",
                 "KEY_BACKSPACE",
+                "[",
+                "]",
             ):
 
                 cursor = move(key, cursor)

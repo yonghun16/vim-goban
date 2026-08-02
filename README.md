@@ -110,23 +110,21 @@ goban
 
 | Key | Action |
 |---|---|
-| `Ctrl+h` | Jump left |
-| `Ctrl+j` | Jump down |
-| `Ctrl+k` | Jump up |
-| `Ctrl+l` | Jump right |
-| `b` | Jump left |
-| `w` | Jump right |
+| `Ctrl+h`, `b` | Jump left |
+| `Ctrl+j`, `w` | Jump down |
+| `Ctrl+k`, `[` | Jump up |
+| `Ctrl+l`, `]` | Jump right |
 
 
 ## Position Movement
 
 | Key | Action |
 |---|---|
-| `Shift + H` | Move to top of column |
-| `Shift + L` | Move to bottom of column |
 | `Shift + A` | Move to far left |
 | `Shift + I` | Move to far right |
+| `Shift + H` | Move to top of column |
 | `Shift + M` | Move to middle of column |
+| `Shift + L` | Move to bottom of column |
 
 
 > Note: Some Ctrl key bindings may conflict with terminal shortcuts depending on your terminal emulator.
@@ -138,7 +136,9 @@ goban
 |---|---|
 | `Enter` | Place stone |
 | `p` | Pass |
-| `r` | Resign |
+|     | Two consecutive passes end the game (Score) |
+| `r` | Show recent move positions |
+| `n` | Start a new game |
 | `u` | Undo last move |
 | `?` | Toggle help |
 | `q` | Quit game |
@@ -180,6 +180,10 @@ GNU Go provides the computer opponent while `vim-goban` handles:
 - Game state
 - Go rules
 
+
+## Rules
+ Pass + Pass   : Both players pass consecutively → Game ends
+ Score         : GNU Go calculates territory and winner
 
 # Project Structure
 

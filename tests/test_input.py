@@ -16,6 +16,11 @@ class TestInput(unittest.TestCase):
         self.assertEqual(move("b", cursor), (6, 9))  # Left 3 spaces
         self.assertEqual(move("w", cursor), (12, 9))  # Right 3 spaces
 
+    def test_jump_movement_brackets(self):
+        cursor = (9, 9)
+        self.assertEqual(move("[", cursor), (9, 6))  # Up 3 spaces
+        self.assertEqual(move("]", cursor), (9, 12))  # Down 3 spaces
+
     def test_absolute_positioning(self):
         cursor = (5, 2)
         self.assertEqual(move("H", cursor), (5, 0))  # Top of current column
