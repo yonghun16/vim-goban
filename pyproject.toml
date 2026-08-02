@@ -1,12 +1,12 @@
 [project]
 name = "vim-goban"
-version = "0.1.0"
+version = "0.1.1"
+requires-python = ">=3.10"
 description = "A Vim-motion powered terminal Go board"
 authors = [
-    {name = "YOUR_NAME"}
+    {name = "yonghun16"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
 
 
 [project.scripts]

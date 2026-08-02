@@ -1,5 +1,9 @@
 # vim-goban
 
+[![PyPI version](https://img.shields.io/pypi/v/vim-goban.svg)](https://pypi.org/project/vim-goban/)
+[![Python](https://img.shields.io/pypi/pyversions/vim-goban.svg)](https://pypi.org/project/vim-goban/)
+[![License](https://img.shields.io/github/license/yonghun16/vim-goban.svg)](LICENSE)
+
 A terminal-based Go (Baduk) game controlled by Vim motions.
 
 `vim-goban` lets you play Go directly in your terminal with familiar Vim keybindings.
@@ -20,7 +24,7 @@ Built with Python and powered by GNU Go AI.
 
 ## Screenshot
 
-![vim-goban](https://github.com/yonghun16/vim-goban/blob/main/preview.gif?raw=true)
+![vim-goban](preview.gif)
 
 
 # Installation
@@ -39,13 +43,11 @@ Built with Python and powered by GNU Go AI.
 brew install gnugo
 ```
 
-
 ### Ubuntu / Debian
 
 ```bash
 sudo apt install gnugo
 ```
-
 
 Check installation:
 
@@ -56,14 +58,45 @@ gnugo --version
 
 ## Install vim-goban
 
+### Using pipx (Recommended)
 
+`vim-goban` is a terminal application, so installing with `pipx` is recommended.
+
+If you don't have pipx installed:
+
+### macOS
+
+```bash
+brew install pipx
+pipx ensurepath
+```
+
+### Linux
+
+```bash
+python3 -m pip install --user pipx
+pipx ensurepath
+```
+
+Install `vim-goban`:
+
+```bash
+pipx install vim-goban
+```
+
+
+## Run
+
+```bash
+goban
+```
 
 
 # Controls
 
 ## Movement
 
-vim-goban uses Vim style movement.
+`vim-goban` uses Vim style movement.
 
 | Key | Action |
 |---|---|
@@ -93,8 +126,10 @@ vim-goban uses Vim style movement.
 | `Shift + L` | Move to bottom of column |
 | `Shift + A` | Move to far left |
 | `Shift + I` | Move to far right |
-| `Shift + M` | Move to middle |
+| `Shift + M` | Move to middle of column |
 
+
+> Note: Some Ctrl key bindings may conflict with terminal shortcuts depending on your terminal emulator.
 
 
 # Game Controls
@@ -109,7 +144,6 @@ vim-goban uses Vim style movement.
 | `q` | Quit game |
 
 
-
 # Gameplay
 
 ## Capturing Stones
@@ -118,18 +152,20 @@ When a group of stones has no remaining liberties, the stones are removed from t
 
 Example:
 
-```
-. ● ○ .
-. ● ○ .
-. ● . .
-```
-
-After capture:
+Before:
 
 ```
-. ● . .
-. ● . .
-. ● . .
+. ○ .
+○ ● ○
+. ○ .
+```
+
+After:
+
+```
+. . .
+. . .
+. . .
 ```
 
 
@@ -137,13 +173,12 @@ After capture:
 
 After placing a stone, GNU Go responds automatically.
 
-GNU Go provides the computer opponent while vim-goban handles:
+GNU Go provides the computer opponent while `vim-goban` handles:
 
 - Board rendering
 - User input
 - Game state
 - Go rules
-
 
 
 # Project Structure
@@ -158,13 +193,12 @@ vim-goban/
 │   ├── input.py       # Vim motion input
 │   └── engine.py      # GNU Go communication
 │
-├── tests/
+├── tests/             # Unit tests
 │
 ├── README.md
 ├── LICENSE
 └── pyproject.toml
 ```
-
 
 
 # Development
@@ -177,13 +211,30 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-
-Install development dependencies:
+Install package locally:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e .
 ```
 
+Run:
+
+```bash
+goban
+```
+
+
+# Roadmap
+
+- [x] Terminal Go board
+- [x] Vim motion controls
+- [x] GNU Go AI integration
+- [x] Stone capture rules
+- [x] Undo support
+- [ ] Ko rule
+- [ ] SGF export/import
+- [ ] Game replay
+- [ ] Neovim plugin integration
 
 
 # License
@@ -195,4 +246,4 @@ See [LICENSE](LICENSE).
 
 # Author
 
-yonghun16
+[@yonghun16](https://github.com/yonghun16)
