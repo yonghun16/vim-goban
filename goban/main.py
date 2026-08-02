@@ -118,6 +118,9 @@ def safe_render_and_draw(
     recent_black=None,
     recent_white=None,
     show_recent=False,
+    game_over=False,
+    black_territory=None,
+    white_territory=None,
 ):
     stdscr.erase()
     max_y, max_x = stdscr.getmaxyx()
@@ -158,6 +161,9 @@ def safe_render_and_draw(
         recent_black=recent_black,
         recent_white=recent_white,
         show_recent=show_recent,
+        game_over=game_over,
+        black_territory=black_territory,
+        white_territory=white_territory,
     )
 
     for i, line in enumerate(lines):
@@ -210,6 +216,8 @@ def run(stdscr):
     recent_black = None
     recent_white = None
     show_recent = False
+    black_territory = None
+    white_territory = None
 
     # Prompt to load saved game
     saved_data = prompt_load(stdscr)
@@ -242,6 +250,10 @@ def run(stdscr):
     try:
         while True:
 
+            if game_over and black_territory is None:
+                black_territory = engine.get_territory("black")
+                white_territory = engine.get_territory("white")
+
             safe_render_and_draw(
                 stdscr,
                 board,
@@ -254,9 +266,21 @@ def run(stdscr):
                 recent_black=recent_black,
                 recent_white=recent_white,
                 show_recent=show_recent,
+                game_over=game_over,
+                black_territory=black_territory,
+                white_territory=white_territory,
             )
 
-            key = stdscr.getkey()
+            if show_recent:
+                stdscr.timeout(400)
+            else:
+                stdscr.timeout(-1)
+
+            try:
+                key = stdscr.getkey()
+            except curses.error:
+                # Timeout occurred, continue to redraw and animate blinking
+                continue
 
             if key == "q":
                 prompt_save(
@@ -326,6 +350,8 @@ def run(stdscr):
                                     recent_white = pos
 
                     show_recent = False
+                    black_territory = None
+                    white_territory = None
 
                     # Reset game status
                     consecutive_passes = 0
@@ -400,7 +426,7 @@ def run(stdscr):
                 # Toggle recent move highlights
                 show_recent = not show_recent
                 if show_recent:
-                    message = "Showing recent moves (★: Black, ☆: White)"
+                    message = "Showing recent moves (●★/○☆: Recent, ◍/◌: Existing)"
                 else:
                     message = "Hidden recent moves."
 
@@ -419,6 +445,8 @@ def run(stdscr):
                     recent_black = None
                     recent_white = None
                     show_recent = False
+                    black_territory = None
+                    white_territory = None
 
             elif key == "\r":
 
@@ -451,6 +479,9 @@ def run(stdscr):
                         turn,
                         "AI is thinking...",
                         show_help,
+                        recent_black=recent_black,
+                        recent_white=recent_white,
+                        show_recent=show_recent,
                     )
 
                     # AI 차례
@@ -477,6 +508,7 @@ def run(stdscr):
                                 board.place(ax, ay, Board.WHITE)
                                 consecutive_passes = 0
                                 moves.append((ai_color, ai_move_upper))
+                                recent_white = (ax, ay)
                                 message = f"AI played {ai_move}"
                     turn = Board.BLACK
                 else:

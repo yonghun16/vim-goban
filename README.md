@@ -24,7 +24,7 @@ Built with Python and powered by GNU Go AI.
 
 ## Screenshot
 
-![vim-goban](preview.gif)
+![vim-goban](https://raw.githubusercontent.com/yonghun16/vim-goban/refs/heads/main/preview.gif)
 
 
 # Installation

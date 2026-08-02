@@ -85,6 +85,19 @@ class GnuGo:
 
         return "Unknown"
 
+    def get_territory(self, color):
+        result = self.send(f"final_status_list {color}_territory")
+        coords = []
+        if result:
+            response_text = " ".join(result)
+            if response_text.startswith("="):
+                response_text = response_text[1:].strip()
+            for coord in response_text.split():
+                pos = self.parse_coordinate(coord)
+                if pos:
+                    coords.append(pos)
+        return coords
+
     def close(self):
 
         self.process.terminate()

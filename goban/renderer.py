@@ -24,7 +24,13 @@ def render(
     recent_black=None,
     recent_white=None,
     show_recent=False,
+    game_over=False,
+    black_territory=None,
+    white_territory=None,
 ):
+    import time
+    blink_state = int(time.time() * 2.5) % 2 == 0  # 400ms interval for perfect blink rate
+
     lines = []
 
     # =================
@@ -61,47 +67,78 @@ def render(
         for x in range(SIZE):
 
             stone = board.get(x, y)
-            cell = "."
 
-            # Cursor
-            if cursor == (x, y):
-
-                if stone == board.EMPTY:
-                    cell = "⊙"
-
+            # If game is over, render territories and played stones, hiding other dots
+            if game_over and black_territory is not None and white_territory is not None:
+                if (x, y) in black_territory:
+                    cell = "•"
+                elif (x, y) in white_territory:
+                    cell = "◦"
                 elif stone == board.BLACK:
-                    if show_recent and recent_black == (x, y):
-                        cell = "★"
-                    else:
-                        cell = "◉"
-
+                    cell = "●"
                 elif stone == board.WHITE:
-                    if show_recent and recent_white == (x, y):
-                        cell = "☆"
-                    else:
+                    cell = "○"
+                else:
+                    cell = " "
+
+                # Overlay cursor on top if it matches
+                if cursor == (x, y):
+                    if cell in (" ", "•", "◦"):
+                        cell = "⊙"
+                    elif cell == "●":
+                        cell = "◉"
+                    elif cell == "○":
                         cell = "◎"
 
-            # Stone
-            elif stone == board.BLACK:
-                if show_recent and recent_black == (x, y):
-                    cell = "★"
-                else:
-                    cell = "●"
-
-            elif stone == board.WHITE:
-                if show_recent and recent_white == (x, y):
-                    cell = "☆"
-                else:
-                    cell = "○"
-
-            # Star point
-            elif (x, y) in STARS:
-
-                cell = "+"
-
+            # Normal rendering
             else:
+                cell = "·"
 
-                cell = "."
+                # Cursor
+                if cursor == (x, y):
+
+                    if stone == board.EMPTY:
+                        cell = "⊙"
+
+                    elif stone == board.BLACK:
+                        if show_recent and recent_black == (x, y):
+                            cell = "●" if blink_state else "★"
+                        else:
+                            cell = "◉"
+
+                    elif stone == board.WHITE:
+                        if show_recent and recent_white == (x, y):
+                            cell = "○" if blink_state else "☆"
+                        else:
+                            cell = "◎"
+
+                # Stone
+                elif stone == board.BLACK:
+                    if show_recent:
+                        if recent_black == (x, y):
+                            cell = "●" if blink_state else "★"
+                        else:
+                            cell = "◍"
+                    else:
+                        cell = "●"
+
+                elif stone == board.WHITE:
+                    if show_recent:
+                        if recent_white == (x, y):
+                            cell = "○" if blink_state else "☆"
+                        else:
+                            cell = "◌"
+                    else:
+                        cell = "○"
+
+                # Star point
+                elif (x, y) in STARS:
+
+                    cell = "+"
+
+                else:
+
+                    cell = "·"
 
             row += cell + " "
 
@@ -122,7 +159,7 @@ def render(
         lines.append(" Shift+M       : Move to Middle of the column")
         lines.append(" Enter (Return): Place stone")
         lines.append(" p             : Pass turn")
-        lines.append(" r             : Show recent move positions (★/☆)")
+        lines.append(" r             : Show recent move positions (●/○ vs ◍/◌)")
         lines.append(" n             : Start a new game")
         lines.append(" u             : Undo last move")
         lines.append(" ?             : Toggle Help Guide")
