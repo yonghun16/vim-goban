@@ -434,6 +434,12 @@ def run(stdscr):
                     engine.play(color, x, y)
                     moves.append((color, coord))
 
+                    # Update recent positions
+                    if turn == Board.BLACK:
+                        recent_black = (x, y)
+                    else:
+                        recent_white = (x, y)
+
                     turn = Board.WHITE
                     # Render temporary state to show White's turn and thinking status
                     safe_render_and_draw(
