@@ -111,9 +111,9 @@ goban
 | Key | Action |
 |---|---|
 | `Ctrl+h`, `b` | Jump left |
-| `Ctrl+j`, `w` | Jump down |
+| `Ctrl+j`, `]` | Jump down |
 | `Ctrl+k`, `[` | Jump up |
-| `Ctrl+l`, `]` | Jump right |
+| `Ctrl+l`, `w` | Jump right |
 
 
 ## Position Movement
