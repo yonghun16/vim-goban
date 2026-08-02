@@ -32,6 +32,12 @@ def move(key, cursor):
     elif key == "\x0a":
         y += 3
 
+    elif key == "]":
+        y += 3
+
+    elif key == "[":
+        y -= 3
+
     # Absolute positioning (Vim-style)
     elif key == "H":  # Shift+H: Top of the current column
         y = 0
