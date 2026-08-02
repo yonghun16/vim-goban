@@ -6,8 +6,6 @@ A terminal-based Go (Baduk) game controlled by Vim motions.
 
 Built with Python and powered by GNU Go AI.
 
-![vim-goban](https://github.com/yourname/vim-goban/assets/demo.gif)
-
 
 ## Features
 
@@ -22,23 +20,7 @@ Built with Python and powered by GNU Go AI.
 
 ## Screenshot
 
-```text
-White ○ captured: 0
-Black ● captured: 0
-Turn: ● Black
-Status: Game loaded successfully!
-
-┌───────────────────────────────────────┐
-│ . . . . . . . . . . . . . . . . . . . │
-│ . . . . . . . . . . . . . . . . . . . │
-│ . . . ○ . . . . . . . . . . . . . . . │
-│ . . . + . . . . . + . . . . . + . . . │
-│                                       │
-│              ...                      │
-│                                       │
-│ . . . . . . . . . . . . . . . . . . . │
-└───────────────────────────────────────┘
-```
+![vim-goban](https://github.com/yonghun16/vim-goban/blob/main/preview.gif?raw=true)
 
 
 # Installation
