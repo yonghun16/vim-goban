@@ -3,19 +3,19 @@ def move(key, cursor):
     x, y = cursor
 
     # Normal movement (1 space)
-    if key == "h":
+    if key in ("h", "KEY_LEFT"):
         x -= 1
 
-    elif key == "l":
+    elif key in ("l", "KEY_RIGHT"):
         x += 1
 
-    elif key == "k":
+    elif key in ("k", "KEY_UP"):
         y -= 1
 
-    elif key == "j":
+    elif key in ("j", "KEY_DOWN"):
         y += 1
 
-    # Jump movement (3 spaces) - Support both Ctrl+hjkl and b/w
+    # Jump movement (3 spaces) - Support Ctrl+hjkl and b/w
     # Ctrl-H is '\x08' (or '\x7f' / 'KEY_BACKSPACE' on modern terminal emulators).
     # Ctrl-K is '\x0b', Ctrl-L is '\x0c'
     # Note: Ctrl-J is '\x0a' (identical to Enter/Newline '\n').

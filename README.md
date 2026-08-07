@@ -14,7 +14,7 @@ Built with Python and powered by GNU Go AI.
 ## Features
 
 - 🏁 Terminal UI based Go board
-- 🎮 Vim-style keyboard navigation (`h`, `j`, `k`, `l`)
+- 🎮 Vim-style keyboard navigation (`h`, `j`, `k`, `l`) or arrow keys
 - ⏩ Jump and position movement inspired by Vim motions
 - 🤖 GNU Go AI integration for opponent gameplay
 - ⚫⚪ Go rule based stone placement and capture system
@@ -102,10 +102,10 @@ goban
 
 | Key | Action |
 |---|---|
-| `h` | Move left |
-| `j` | Move down |
-| `k` | Move up |
-| `l` | Move right |
+| `h`, `←` | Move left |
+| `j`, `↓` | Move down |
+| `k`, `↑` | Move up |
+| `l`, `→` | Move right |
 
 
 ## Jump Movement

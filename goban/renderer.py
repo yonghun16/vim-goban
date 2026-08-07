@@ -1,5 +1,107 @@
 from .board import SIZE
 
+# =================
+# Title logo font (5 rows tall, block letters)
+# =================
+
+FONT = {
+    "V": ["█ █", "█ █", "█ █", "█ █", " █ "],
+    "I": ["█", "█", "█", "█", "█"],
+    "M": ["█ █", "███", "█ █", "█ █", "█ █"],
+    "G": ["███", "█  ", "█ █", "█ █", "███"],
+    "O": ["███", "█ █", "█ █", "█ █", "███"],
+    "B": ["██ ", "█ █", "██ ", "█ █", "██ "],
+    "A": ["███", "█ █", "███", "█ █", "█ █"],
+    "N": ["█ █", "███", "█ █", "█ █", "█ █"],
+}
+
+
+def _build_word(word, gap=1):
+    letters = [FONT[ch] for ch in word]
+    return [(" " * gap).join(letter[row] for letter in letters) for row in range(5)]
+
+
+def _build_logo(word_gap=2):
+    vim = _build_word("VIM")
+    goban = _build_word("GOBAN")
+    return [vim[row] + (" " * word_gap) + goban[row] for row in range(5)]
+
+
+def render_box(content, align="center"):
+    """Wrap content lines in a board-width box. Pads to the board's height when
+    shorter, but grows taller (never truncates) when content doesn't fit."""
+
+    width = SIZE * 2 - 1  # Same width used for the board box
+    inner_width = width + 2  # Same interior width as the board box
+
+    content = list(content)
+    if len(content) < SIZE:
+        pad_total = SIZE - len(content)
+        top_pad = pad_total // 2
+        bottom_pad = pad_total - top_pad
+        content = [""] * top_pad + content + [""] * bottom_pad
+
+    lines = ["┌" + "─" * inner_width + "┐"]
+    for row in content:
+        row = row[:width]
+        row = row.center(width) if align == "center" else row.ljust(width)
+        lines.append("│ " + row + " │")
+    lines.append("└" + "─" * inner_width + "┘")
+
+    return lines
+
+
+HELP_LINES = [
+    "Movement",
+    "hjkl / Arrows: Move 1 space",
+    "Ctrl+hjkl, b/w: Jump 3 spaces",
+    "[ / ]: Jump 3 spaces Up/Down",
+    "Shift+H/M/L: Column Top/Mid/Bottom",
+    "Shift+A/I: Row Far Left/Right",
+    "",
+    "Actions",
+    "Enter: Place stone",
+    "p: Pass (x2 ends the game)",
+    "u: Undo last move",
+    "r: Show recent moves",
+    "c: Toggle color theme",
+    "n: Start a new game",
+    "?: Toggle in-game help",
+    "q: Quit (offers to save)",
+]
+
+
+def render_help_screen():
+    """Render a standalone Help screen listing all controls, boxed to board size."""
+
+    width = SIZE * 2 - 1
+
+    content = ["Help".center(width), ""]
+    content.extend(HELP_LINES)
+    content.append("")
+    content.append("Press any key to continue".center(width))
+
+    return render_box(content, align="left")
+
+
+def render_main_menu(items, selected):
+    """Render the 'VIM GOBAN' logo with the main menu listed directly below it."""
+
+    content = list(_build_logo())
+    content.append("")
+    content.append("Vim-motion powered terminal Go board")
+    content.append("")
+    for i, item in enumerate(items):
+        marker = "▶ " if i == selected else "  "
+        content.append(f"{marker}{item}")
+    content.append("")
+    content.append("↑↓/kj Move   Enter Select")
+    content.append("")
+    content.append("Powered by GNU Go")
+
+    return render_box(content)
+
+
 STARS = {
     (3, 3),
     (9, 3),
@@ -53,10 +155,19 @@ def render(
     lines.append("")
 
     # =================
-    # Board
+    # Board / Help overlay
     # =================
 
     width = SIZE * 2 - 1
+
+    if show_help:
+        # Render help as a box the same fixed size as the board itself, so it's
+        # always fully visible wherever the board would fit — never clipped by
+        # a small terminal the way a long list of appended lines could be.
+        help_content = ["Help Guide".center(width), ""]
+        help_content.extend(HELP_LINES)
+        lines.extend(render_box(help_content, align="left"))
+        return lines
 
     lines.append("┌" + "─" * (width + 2) + "┐")
 
@@ -147,34 +258,5 @@ def render(
         lines.append(row)
 
     lines.append("└" + "─" * (width + 2) + "┘")
-
-    if show_help:
-        lines.append("")
-        lines.append(" [ Help Guide ]")
-        lines.append("")
-        lines.append(" hjkl          : Move cursor 1 space (Left, Down, Up, Right)")
-        lines.append(" Ctrl+hjkl     : Jump cursor 3 spaces")
-        lines.append(" [ / ]         : Jump cursor 3 spaces Up / Down")
-        lines.append(" b / w         : Jump cursor 3 spaces Left / Right")
-        lines.append(" Shift+H / L   : Move to Top / Bottom of the column")
-        lines.append(" Shift+A / I   : Move to Far Left / Right of the row")
-        lines.append(" Shift+M       : Move to Middle of the column")
-        lines.append("")
-        lines.append(" Enter (Return): Place stone")
-        lines.append(" p             : Pass turn")
-        lines.append("               : Two consecutive passes end the game (Score)")
-        lines.append(" r             : Show recent move positions (●/○ vs ◍/◌)")
-        lines.append(" c             : Toggle Color Theme")
-        lines.append(" n             : Start a new game")
-        lines.append(" u             : Undo last move")
-        lines.append("")
-        lines.append(" ?             : Toggle Help Guide")
-        lines.append(" q             : Quit game")
-        lines.append("")
-        lines.append("")
-        lines.append("[ Game Rules ]")
-        lines.append("")
-        lines.append(" Pass + Pass   : Both players pass consecutively → Game ends")
-        lines.append(" Score         : GNU Go calculates territory and winner")
 
     return lines

@@ -70,6 +70,30 @@ class GnuGo:
 
         return letters[x] + str(19 - y)
 
+    def set_level(self, level):
+
+        self.send(f"level {level}")
+
+    def set_handicap(self, handicap):
+
+        result = self.send(f"fixed_handicap {handicap}")
+
+        positions = []
+
+        if result:
+
+            response_text = " ".join(result)
+
+            if response_text.startswith("="):
+                response_text = response_text[1:].strip()
+
+            for coord in response_text.split():
+                pos = self.parse_coordinate(coord)
+                if pos:
+                    positions.append(pos)
+
+        return positions
+
     def get_final_score(self):
 
         result = self.send("final_score")

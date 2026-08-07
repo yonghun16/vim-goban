@@ -1,26 +1,33 @@
 import curses
 import json
 import os
+import shutil
+import sys
 import platformdirs
-from goban.board import Board
+from goban.board import Board, SIZE
 from goban.engine import GnuGo
 from goban.input import move  # Import the move function
 
 USER_DATA_DIR = platformdirs.user_data_dir("vim-goban")
 SAVE_FILE = os.path.join(USER_DATA_DIR, "savegame.json")
+SETTINGS_FILE = os.path.join(USER_DATA_DIR, "settings.json")
 LEGACY_SAVE_FILE = "savegame.json"
+
+DEFAULT_SETTINGS = {"ai_level": 10}
 
 # Migrate legacy save file if it exists and new one does not
 if not os.path.exists(SAVE_FILE) and os.path.exists(LEGACY_SAVE_FILE):
     try:
         os.makedirs(USER_DATA_DIR, exist_ok=True)
-        import shutil
         shutil.move(LEGACY_SAVE_FILE, SAVE_FILE)
     except Exception:
         pass
 
 
-def save_game(board, moves, turn, game_over, consecutive_passes, cursor, history):
+def save_game(
+    board, moves, turn, game_over, consecutive_passes, cursor, history,
+    player_color, handicap,
+):
     data = {
         "board_state": board.save_state(),
         "moves": moves,
@@ -29,6 +36,8 @@ def save_game(board, moves, turn, game_over, consecutive_passes, cursor, history
         "consecutive_passes": consecutive_passes,
         "cursor": list(cursor),
         "history": history,
+        "player_color": player_color,
+        "handicap": handicap,
     }
     os.makedirs(os.path.dirname(SAVE_FILE), exist_ok=True)
     with open(SAVE_FILE, "w") as f:
@@ -42,8 +51,28 @@ def load_game():
         return json.load(f)
 
 
+def load_settings():
+    if not os.path.exists(SETTINGS_FILE):
+        return dict(DEFAULT_SETTINGS)
+    try:
+        with open(SETTINGS_FILE, "r") as f:
+            data = json.load(f)
+        settings = dict(DEFAULT_SETTINGS)
+        settings.update(data)
+        return settings
+    except (json.JSONDecodeError, OSError):
+        return dict(DEFAULT_SETTINGS)
+
+
+def save_settings(settings):
+    os.makedirs(USER_DATA_DIR, exist_ok=True)
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump(settings, f, indent=4)
+
+
 def prompt_save(
-    stdscr, board, moves, turn, game_over, consecutive_passes, cursor, history
+    stdscr, board, moves, turn, game_over, consecutive_passes, cursor, history,
+    player_color, handicap,
 ):
     # Give the terminal state a tiny moment to settle and flush any interrupted inputs
     curses.napms(100)
@@ -65,37 +94,15 @@ def prompt_save(
             key = stdscr.getkey()
             if key in ("y", "Y"):
                 save_game(
-                    board, moves, turn, game_over, consecutive_passes, cursor, history
+                    board, moves, turn, game_over, consecutive_passes, cursor,
+                    history, player_color, handicap,
                 )
                 break
-            elif key in ("n", "N"):
+            elif key in ("n", "N", "\x1b", "\x03"):
                 break
-        except (curses.error, KeyboardInterrupt):
+        except (curses.error, ValueError, KeyboardInterrupt):
             # If Ctrl+C is pressed again or any curses error (like no input) occurs, break and exit safely
             break
-
-
-def prompt_load(stdscr):
-    if not os.path.exists(SAVE_FILE):
-        return None
-    stdscr.erase()
-    max_y, max_x = stdscr.getmaxyx()
-    msg = "Found saved game. Load? [y/n]: "
-    try:
-        stdscr.addstr(0, 0, msg[: max_x - 1])
-    except curses.error:
-        pass
-    stdscr.refresh()
-    while True:
-        try:
-            key = stdscr.getkey()
-            if key in ("y", "Y"):
-                return load_game()
-            elif key in ("n", "N"):
-                return None
-        except (curses.error, KeyboardInterrupt):
-            # If Ctrl+C is pressed or any curses error occurs, start a new game by default
-            return None
 
 
 def prompt_new_game(stdscr):
@@ -112,11 +119,166 @@ def prompt_new_game(stdscr):
             key = stdscr.getkey()
             if key in ("y", "Y"):
                 return True
-            elif key in ("n", "N"):
+            elif key in ("n", "N", "\x1b", "\x03"):
                 return False
-        except (curses.error, KeyboardInterrupt):
+        except (curses.error, ValueError, KeyboardInterrupt):
             # If Ctrl+C is pressed or any error occurs, do not start a new game by default
             return False
+
+
+def draw_centered_box(stdscr, lines):
+    stdscr.erase()
+    max_y, max_x = stdscr.getmaxyx()
+
+    box_height = len(lines)
+    box_width = len(lines[0]) if lines else 0
+
+    start_y = max(0, (max_y - box_height) // 2)
+    start_x = max(0, (max_x - box_width) // 2)
+
+    for i, line in enumerate(lines):
+        y = start_y + i
+        if y >= max_y or start_x >= max_x:
+            break
+        safe_len = max_x - start_x
+        if y == max_y - 1:
+            safe_len -= 1  # Avoid writing to the bottom-right corner
+        safe_len = max(0, safe_len)
+        try:
+            stdscr.addstr(y, start_x, line[:safe_len])
+        except curses.error:
+            pass
+
+    stdscr.refresh()
+
+
+def show_message(stdscr, lines):
+    from goban.renderer import render_box  # Avoid circular import
+
+    draw_centered_box(stdscr, render_box(lines))
+
+    curses.flushinp()
+    try:
+        stdscr.getkey()
+    except (curses.error, ValueError):
+        pass
+
+
+def run_select_menu(stdscr, title, items, selected=0, subtitle=None, allow_back=True):
+    from goban.renderer import render_box  # Avoid circular import
+
+    selected = max(0, min(len(items) - 1, selected))
+
+    while True:
+        content = [title]
+        if subtitle:
+            content.append(subtitle)
+        content.append("")
+        for i, item in enumerate(items):
+            marker = "▶ " if i == selected else "  "
+            content.append(f"{marker}{item}")
+        content.append("")
+        hint = "↑↓/kj Move   Enter Select"
+        if allow_back:
+            hint += "   q Back"
+        content.append(hint)
+
+        draw_centered_box(stdscr, render_box(content))
+
+        try:
+            key = stdscr.getkey()
+        except (curses.error, ValueError):
+            continue
+
+        if key in ("k", "KEY_UP"):
+            selected = (selected - 1) % len(items)
+        elif key in ("j", "KEY_DOWN"):
+            selected = (selected + 1) % len(items)
+        elif key == "\r":
+            return selected
+        elif key in ("q", "\x1b", "\x03"):
+            curses.flushinp()  # Discard any trailing bytes of an unresolved escape sequence
+            return None
+
+
+def show_new_game_setup(stdscr):
+    color_idx = run_select_menu(
+        stdscr,
+        "New Game",
+        ["Black (●) — plays first", "White (○) — plays second"],
+        subtitle="Choose your stone color",
+    )
+    if color_idx is None:
+        return None
+    player_color = ["black", "white"][color_idx]
+
+    handicap_values = [0, 2, 3, 4, 5, 6, 7, 8, 9]
+    handicap_items = ["0 (No handicap)"] + [str(n) for n in handicap_values[1:]]
+    handicap_idx = run_select_menu(
+        stdscr,
+        "New Game",
+        handicap_items,
+        subtitle="Handicap stones for Black",
+    )
+    if handicap_idx is None:
+        return None
+    handicap = handicap_values[handicap_idx]
+
+    return {"color": player_color, "handicap": handicap}
+
+
+def show_help_menu(stdscr):
+    from goban.renderer import render_help_screen  # Avoid circular import
+
+    draw_centered_box(stdscr, render_help_screen())
+
+    curses.flushinp()
+    try:
+        stdscr.getkey()
+    except (curses.error, ValueError):
+        pass
+
+
+def show_main_menu(stdscr, selected=0):
+    from goban.renderer import render_main_menu  # Avoid circular import
+
+    items = ["New Game", "Load Game", "Difficulty", "Help", "Quit Game"]
+    selected = max(0, min(len(items) - 1, selected))
+
+    while True:
+        draw_centered_box(stdscr, render_main_menu(items, selected))
+
+        try:
+            key = stdscr.getkey()
+        except (curses.error, ValueError):
+            continue
+
+        if key == "\x1b":
+            curses.flushinp()  # Discard any trailing bytes of an unresolved escape sequence
+            continue
+
+        if key in ("k", "KEY_UP"):
+            selected = (selected - 1) % len(items)
+        elif key in ("j", "KEY_DOWN"):
+            selected = (selected + 1) % len(items)
+        elif key == "\r":
+            return items[selected], selected
+        elif key in ("q", "\x03"):
+            return "Quit Game", selected
+
+
+def show_difficulty_selection(stdscr, settings):
+    items = [f"Level {i}" for i in range(1, 11)]
+    idx = run_select_menu(
+        stdscr,
+        "Difficulty",
+        items,
+        selected=settings.get("ai_level", 10) - 1,
+        subtitle="GNU Go strength (1 Weak — 10 Strong)",
+    )
+    if idx is not None:
+        settings["ai_level"] = idx + 1
+        save_settings(settings)
 
 
 def safe_render_and_draw(
@@ -182,13 +344,22 @@ def safe_render_and_draw(
 
     has_colors = curses.has_colors()
 
+    # Center the board on screen, like the menu screens. Anchored to the board's
+    # own fixed size (not the variable-length status/help lines) so it doesn't
+    # shift around as messages change or help is toggled.
+    board_width = SIZE * 2 + 3
+    start_y = max(0, (max_y - MIN_HEIGHT) // 2)
+    start_x = max(0, (max_x - board_width) // 2)
+
     for i, line in enumerate(lines):
-        if i >= max_y:
+        y = start_y + i
+        if y >= max_y or start_x >= max_x:
             break
         # To avoid error on bottom-right character and handle narrow width safely
-        safe_len = max_x - 1
-        if i == max_y - 1:
-            safe_len = max_x - 2
+        safe_len = max_x - start_x
+        if y == max_y - 1:
+            safe_len -= 1
+        safe_len = max(0, safe_len)
         safe_line = line[:safe_len]
         try:
             if color_mode and has_colors and line.startswith(("┌", "│", "└")):
@@ -217,62 +388,29 @@ def safe_render_and_draw(
                         char = "◉"
                     elif char == "☆":
                         char = "★"
-                    
+
                     try:
-                        stdscr.addch(i, col_idx, char, attr)
+                        stdscr.addch(y, start_x + col_idx, char, attr)
                     except curses.error:
                         pass
             else:
-                stdscr.addstr(i, 0, safe_line)
+                stdscr.addstr(y, start_x, safe_line)
         except curses.error:
             pass
 
     stdscr.refresh()
 
 
-def main():
+def play_game(stdscr, settings, new_game_setup=None, load=False):
 
-    try:
-        curses.wrapper(run)
-
-    except KeyboardInterrupt:
-        pass
-
-
-def run(stdscr):
-
-    curses.curs_set(0)
-
-    curses.use_default_colors()
-
-    if curses.has_colors():
-        curses.start_color()
-        if curses.COLORS >= 256:
-            curses.init_pair(10, 235, 222)  # Board grid lines
-            curses.init_pair(11, 94, 222)   # Star points
-            curses.init_pair(12, 0, 222)    # Black stones
-            curses.init_pair(13, 15, 222)   # White stones
-            curses.init_pair(14, 196, 222)  # Cursors / highlights
-        else:
-            curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_YELLOW)
-            curses.init_pair(11, curses.COLOR_RED, curses.COLOR_YELLOW)
-            curses.init_pair(12, curses.COLOR_BLACK, curses.COLOR_YELLOW)
-            curses.init_pair(13, curses.COLOR_WHITE, curses.COLOR_YELLOW)
-            curses.init_pair(14, curses.COLOR_RED, curses.COLOR_YELLOW)
-
-    curses.nonl()  # Disable translation of carriage return to newline to distinguish Enter from Ctrl-J
-
-    stdscr.bkgd(" ", curses.color_pair(0))
+    engine = GnuGo()
+    engine.set_level(settings.get("ai_level", 10))
 
     board = Board()
-    engine = GnuGo()
-
     cursor = (9, 9)
-
     turn = Board.BLACK
     game_over = False
     consecutive_passes = 0
-    message = "Place stone [Enter], Pass [p], Recent [r], Quit [q]"
     show_help = False
     history = []
     moves = []
@@ -282,10 +420,12 @@ def run(stdscr):
     black_territory = None
     white_territory = None
     color_mode = False
+    message = "Place stone [Enter], Pass [p], Recent [r], Quit [q]"
 
-    # Prompt to load saved game
-    saved_data = prompt_load(stdscr)
-    if saved_data:
+    engine.send("clear_board")
+
+    if load:
+        saved_data = load_game()
         board.restore_state(saved_data["board_state"])
         moves = saved_data["moves"]
         turn = saved_data["turn"]
@@ -293,6 +433,15 @@ def run(stdscr):
         consecutive_passes = saved_data["consecutive_passes"]
         cursor = tuple(saved_data["cursor"])
         history = saved_data["history"]
+        player_color = saved_data.get("player_color", "black")
+        handicap = saved_data.get("handicap", 0)
+
+        # Re-apply the handicap so the engine's internal state matches board_state,
+        # then replay the moves made after the handicap stones were placed.
+        if handicap >= 2:
+            engine.set_handicap(handicap)
+        for color, coord in moves:
+            engine.send(f"play {color} {coord}")
 
         # Parse recent positions from loaded moves
         for color, coord in moves:
@@ -304,14 +453,110 @@ def run(stdscr):
                     else:
                         recent_white = pos
 
-        # Replay moves to GnuGo
-        engine.send("clear_board")
-        for color, coord in moves:
-            engine.send(f"play {color} {coord}")
-
         message = "Game loaded successfully! Place stone [Enter], Pass [p], Recent [r], Quit [q]"
+    else:
+        player_color = new_game_setup["color"]
+        handicap = new_game_setup["handicap"]
+
+        if handicap >= 2:
+            stones = engine.set_handicap(handicap)
+            for hx, hy in stones:
+                board.place(hx, hy, Board.BLACK)
+            turn = Board.WHITE
+        else:
+            turn = Board.BLACK
+
+        message = "New game started! Place stone [Enter], Pass [p], Recent [r], Quit [q]"
+
+    player_stone = Board.BLACK if player_color == "black" else Board.WHITE
+    ai_color = "white" if player_color == "black" else "black"
+    ai_stone = Board.WHITE if ai_color == "white" else Board.BLACK
+
+    def do_ai_move(thinking_message="AI is thinking..."):
+        nonlocal message, consecutive_passes, game_over, recent_black, recent_white, turn
+
+        # Render temporary state to show the AI's thinking status
+        safe_render_and_draw(
+            stdscr,
+            board,
+            cursor,
+            board.white_captured,
+            board.black_captured,
+            turn,
+            thinking_message,
+            show_help,
+            recent_black=recent_black,
+            recent_white=recent_white,
+            show_recent=show_recent,
+            color_mode=color_mode,
+        )
+
+        ai_move = engine.genmove(ai_color)
+
+        if ai_move:
+            ai_move_upper = ai_move.upper()
+            if "PASS" in ai_move_upper:
+                consecutive_passes += 1
+                moves.append((ai_color, "PASS"))
+                message = "AI passed."
+                if consecutive_passes >= 2:
+                    game_over = True
+                    score = engine.get_final_score()
+                    message = f"Game Over! Final Score: {score} (Press 'q' to quit)"
+            elif "RESIGN" in ai_move_upper:
+                game_over = True
+                message = "AI Resigned! You win! (Press 'q' to quit)"
+            else:
+                ai_pos = engine.parse_coordinate(ai_move)
+                if ai_pos:
+                    ax, ay = ai_pos
+                    board.place(ax, ay, ai_stone)
+                    consecutive_passes = 0
+                    moves.append((ai_color, ai_move_upper))
+                    if ai_stone == Board.BLACK:
+                        recent_black = (ax, ay)
+                    else:
+                        recent_white = (ax, ay)
+                    message = f"AI played {ai_move}"
+
+        turn = player_stone
+
+    def restart_game():
+        nonlocal board, cursor, turn, game_over, consecutive_passes, message
+        nonlocal show_help, history, moves, recent_black, recent_white
+        nonlocal show_recent, black_territory, white_territory
+
+        engine.send("clear_board")
+        board = Board()
+        cursor = (9, 9)
+        game_over = False
+        consecutive_passes = 0
+        show_help = False
+        history = []
+        moves = []
+        recent_black = None
+        recent_white = None
+        show_recent = False
+        black_territory = None
+        white_territory = None
+
+        if handicap >= 2:
+            stones = engine.set_handicap(handicap)
+            for hx, hy in stones:
+                board.place(hx, hy, Board.BLACK)
+            turn = Board.WHITE
+        else:
+            turn = Board.BLACK
+
+        message = "Started a new game. Place stone [Enter], Pass [p], Recent [r], Quit [q]"
+
+        if turn == ai_stone:
+            do_ai_move()
 
     try:
+        if turn == ai_stone and not game_over:
+            do_ai_move()
+
         while True:
 
             if game_over and black_territory is None:
@@ -343,11 +588,21 @@ def run(stdscr):
 
             try:
                 key = stdscr.getkey()
-            except curses.error:
-                # Timeout occurred, continue to redraw and animate blinking
+            except (curses.error, ValueError):
+                # Timeout occurred, or an undecodable byte was received — just redraw and retry
                 continue
 
-            if key == "q":
+            if key == "\x1b":
+                # A bare ESC usually means curses couldn't resolve the rest of an escape
+                # sequence (e.g. Shift+Arrow on a terminal whose terminfo doesn't map it).
+                # Discard whatever trailing bytes are still buffered so fragments like
+                # '[' or 'A' don't get misread as unrelated shortcuts (jump, Shift+A, etc).
+                curses.flushinp()
+                continue
+
+            if key in ("q", "\x03"):
+                # '\x03' is Ctrl+C: raw mode (see run()) stops it from raising
+                # SIGINT/KeyboardInterrupt, so it's handled here like 'q' instead.
                 prompt_save(
                     stdscr,
                     board,
@@ -357,8 +612,10 @@ def run(stdscr):
                     consecutive_passes,
                     cursor,
                     history,
+                    player_color,
+                    handicap,
                 )
-                break
+                return True  # Quitting mid-game exits the app, not just the game
 
             if game_over and key not in ("q", "u", "?", "r", "n", "c"):
                 # When the game is over, only 'q', 'u', '?', 'r', 'n', and 'c' are allowed
@@ -369,6 +626,10 @@ def run(stdscr):
                 "j",
                 "k",
                 "l",
+                "KEY_LEFT",
+                "KEY_RIGHT",
+                "KEY_UP",
+                "KEY_DOWN",
                 "H",
                 "L",
                 "M",
@@ -433,10 +694,10 @@ def run(stdscr):
             elif key == "p":
                 # Player passes
                 state_before = board.save_state()
-                engine.send("play black PASS")
-                moves.append(("black", "PASS"))
+                engine.send(f"play {player_color} PASS")
+                moves.append((player_color, "PASS"))
                 consecutive_passes += 1
-                message = "Black passed!"
+                message = f"{player_color.capitalize()} passed!"
 
                 if consecutive_passes >= 2:
                     history.append(state_before)
@@ -445,50 +706,10 @@ def run(stdscr):
                     message = f"Game Over! Final Score: {score} (Press 'q' to quit)"
                 else:
                     history.append(state_before)
-                    turn = Board.WHITE
-                    # Render temporary state to show White's turn and thinking status
-                    safe_render_and_draw(
-                        stdscr,
-                        board,
-                        cursor,
-                        board.white_captured,
-                        board.black_captured,
-                        turn,
-                        "Black passed! AI is thinking...",
-                        show_help,
-                        recent_black=recent_black,
-                        recent_white=recent_white,
-                        show_recent=show_recent,
-                        color_mode=color_mode,
+                    turn = ai_stone
+                    do_ai_move(
+                        thinking_message=f"{player_color.capitalize()} passed! AI is thinking..."
                     )
-
-                    # AI's turn
-                    ai_color = "white"
-                    ai_move = engine.genmove(ai_color)
-
-                    if ai_move:
-                        ai_move_upper = ai_move.upper()
-                        if "PASS" in ai_move_upper:
-                            consecutive_passes += 1
-                            moves.append((ai_color, "PASS"))
-                            message = "Black passed! AI also passed."
-                            if consecutive_passes >= 2:
-                                game_over = True
-                                score = engine.get_final_score()
-                                message = f"Game Over! Final Score: {score} (Press 'q' to quit)"
-                        elif "RESIGN" in ai_move_upper:
-                            game_over = True
-                            message = "AI Resigned! Black wins! (Press 'q' to quit)"
-                        else:
-                            ai_pos = engine.parse_coordinate(ai_move)
-                            if ai_pos:
-                                ax, ay = ai_pos
-                                board.place(ax, ay, Board.WHITE)
-                                consecutive_passes = 0
-                                moves.append((ai_color, ai_move_upper))
-                                recent_white = (ax, ay)
-                                message = f"AI played {ai_move}"
-                    turn = Board.BLACK
 
             elif key == "r":
                 # Toggle recent move highlights
@@ -507,90 +728,35 @@ def run(stdscr):
 
             elif key == "n":
                 if prompt_new_game(stdscr):
-                    board = Board()
-                    engine.send("clear_board")
-                    cursor = (9, 9)
-                    turn = Board.BLACK
-                    game_over = False
-                    consecutive_passes = 0
-                    message = "Started a new game. Place stone [Enter], Pass [p], Recent [r], Quit [q]"
-                    show_help = False
-                    history = []
-                    moves = []
-                    recent_black = None
-                    recent_white = None
-                    show_recent = False
-                    black_territory = None
-                    white_territory = None
+                    restart_game()
 
             elif key == "\r":
 
                 x, y = cursor
                 state_before = board.save_state()
 
-                if board.place(x, y, turn):
+                if board.place(x, y, player_stone):
                     history.append(state_before)
                     consecutive_passes = 0
-                    color = "black"
 
                     coord = engine.coordinate(x, y)
-                    engine.play(color, x, y)
-                    moves.append((color, coord))
+                    engine.play(player_color, x, y)
+                    moves.append((player_color, coord))
 
                     # Update recent positions
-                    if turn == Board.BLACK:
+                    if player_stone == Board.BLACK:
                         recent_black = (x, y)
                     else:
                         recent_white = (x, y)
 
-                    turn = Board.WHITE
-                    # Render temporary state to show White's turn and thinking status
-                    safe_render_and_draw(
-                        stdscr,
-                        board,
-                        cursor,
-                        board.white_captured,
-                        board.black_captured,
-                        turn,
-                        "AI is thinking...",
-                        show_help,
-                        recent_black=recent_black,
-                        recent_white=recent_white,
-                        show_recent=show_recent,
-                        color_mode=color_mode,
-                    )
-
-                    # AI 차례
-                    ai_color = "white"
-                    ai_move = engine.genmove(ai_color)
-
-                    if ai_move:
-                        ai_move_upper = ai_move.upper()
-                        if "PASS" in ai_move_upper:
-                            consecutive_passes += 1
-                            moves.append((ai_color, "PASS"))
-                            message = "AI passed."
-                            if consecutive_passes >= 2:
-                                game_over = True
-                                score = engine.get_final_score()
-                                message = f"Game Over! Final Score: {score} (Press 'q' to quit)"
-                        elif "RESIGN" in ai_move_upper:
-                            game_over = True
-                            message = "AI Resigned! Black wins! (Press 'q' to quit)"
-                        else:
-                            ai_pos = engine.parse_coordinate(ai_move)
-                            if ai_pos:
-                                ax, ay = ai_pos
-                                board.place(ax, ay, Board.WHITE)
-                                consecutive_passes = 0
-                                moves.append((ai_color, ai_move_upper))
-                                recent_white = (ax, ay)
-                                message = f"AI played {ai_move}"
-                    turn = Board.BLACK
+                    turn = ai_stone
+                    do_ai_move()
                 else:
                     message = "Illegal move! Try again. (Self-capture or Ko)"
 
-    except (KeyboardInterrupt, curses.error):
+    except (KeyboardInterrupt, Exception):
+        # Any unexpected error (bad input, a curses hiccup, ...) falls back to a
+        # graceful save prompt instead of crashing out to the shell.
         prompt_save(
             stdscr,
             board,
@@ -600,9 +766,100 @@ def run(stdscr):
             consecutive_passes,
             cursor,
             history,
+            player_color,
+            handicap,
         )
     finally:
         engine.close()
+
+
+def main():
+
+    if shutil.which("gnugo") is None:
+        print("vim-goban requires GNU Go as its game engine. Please install GNU Go and try again.")
+        print()
+        print("  macOS         : brew install gnugo")
+        print("  Ubuntu/Debian : sudo apt install gnugo")
+        print()
+        print("See the README for details: https://github.com/yonghun16/vim-goban")
+        sys.exit(1)
+
+    try:
+        curses.wrapper(run)
+
+    except KeyboardInterrupt:
+        pass
+    except Exception as exc:
+        # curses.wrapper always restores the terminal before this runs, even on
+        # error, so this is just a clean message instead of a raw traceback.
+        print(f"vim-goban hit an unexpected error and had to close: {exc}")
+        sys.exit(1)
+
+
+def run(stdscr):
+
+    curses.curs_set(0)
+
+    # curses.wrapper() only puts the terminal in cbreak mode, which still lets
+    # control characters like Ctrl+\ (SIGQUIT), Ctrl+Z (SIGTSTP) and Ctrl+S/Ctrl+Q
+    # (flow control) act as raw OS-level signals that kill or freeze the process
+    # before a single line of our code ever runs. raw() disables that so every
+    # key press — including odd remapped combos — arrives as plain input we can
+    # safely ignore instead of being terminated by it.
+    curses.raw()
+
+    stdscr.keypad(True)
+
+    curses.use_default_colors()
+
+    if curses.has_colors():
+        curses.start_color()
+        if curses.COLORS >= 256:
+            curses.init_pair(10, 235, 222)  # Board grid lines
+            curses.init_pair(11, 94, 222)   # Star points
+            curses.init_pair(12, 0, 222)    # Black stones
+            curses.init_pair(13, 15, 222)   # White stones
+            curses.init_pair(14, 196, 222)  # Cursors / highlights
+        else:
+            curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+            curses.init_pair(11, curses.COLOR_RED, curses.COLOR_YELLOW)
+            curses.init_pair(12, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+            curses.init_pair(13, curses.COLOR_WHITE, curses.COLOR_YELLOW)
+            curses.init_pair(14, curses.COLOR_RED, curses.COLOR_YELLOW)
+
+    curses.nonl()  # Disable translation of carriage return to newline to distinguish Enter from Ctrl-J
+
+    stdscr.bkgd(" ", curses.color_pair(0))
+
+    settings = load_settings()
+
+    menu_selection = 0
+
+    while True:
+
+        choice, menu_selection = show_main_menu(stdscr, selected=menu_selection)
+
+        if choice == "Quit Game":
+            return
+
+        elif choice == "Difficulty":
+            show_difficulty_selection(stdscr, settings)
+
+        elif choice == "Help":
+            show_help_menu(stdscr)
+
+        elif choice == "New Game":
+            setup = show_new_game_setup(stdscr)
+            if setup is not None:
+                if play_game(stdscr, settings, new_game_setup=setup):
+                    return
+
+        elif choice == "Load Game":
+            if not os.path.exists(SAVE_FILE):
+                show_message(stdscr, ["No saved game found.", "", "Press any key to continue"])
+            else:
+                if play_game(stdscr, settings, load=True):
+                    return
 
 
 if __name__ == "__main__":
