@@ -54,10 +54,10 @@ def render_box(content, align="center"):
 HELP_LINES = [
     "Movement",
     "hjkl / Arrows: Move 1 space",
-    "Ctrl+hjkl, b/w: Jump 3 spaces",
-    "[ / ]: Jump 3 spaces Up/Down",
+    "Ctrl+hjkl: Jump 3 spaces",
+    "b/w, [ / ]: Jump 3 spaces (L/R, U/D)",
     "Shift+H/M/L: Column Top/Mid/Bottom",
-    "Shift+A/I: Row Far Left/Right",
+    "Shift+I/A: Row Far Left/Right",
     "",
     "Actions",
     "Enter: Place stone",

@@ -48,10 +48,10 @@ def move(key, cursor):
     elif key == "M":  # Shift+M: Middle of the current column
         y = 9
 
-    elif key == "A":  # Shift+A: Far left of the row
+    elif key == "I":  # Shift+I: Far left of the row (Vim: insert before first char)
         x = 0
 
-    elif key == "I":  # Shift+I: Far right of the row
+    elif key == "A":  # Shift+A: Far right of the row (Vim: append after last char)
         x = 18
 
     x = max(0, min(18, x))

@@ -122,8 +122,8 @@ goban
 
 | Key | Action |
 |---|---|
-| `Shift + A` | Move to far left |
-| `Shift + I` | Move to far right |
+| `Shift + I` | Move to far left |
+| `Shift + A` | Move to far right |
 | `Shift + H` | Move to top of column |
 | `Shift + M` | Move to middle of column |
 | `Shift + L` | Move to bottom of column |
